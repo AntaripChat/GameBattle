@@ -69,7 +69,7 @@ export default function Navbar() {
         to="/"
         className="text-2xl font-bold text-indigo-400 hover:text-indigo-300 transition-colors"
       >
-        ChallengeMe
+        GameBattle
       </Link>
 
       <div className="hidden md:flex items-center gap-6">

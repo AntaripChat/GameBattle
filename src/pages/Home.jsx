@@ -22,7 +22,7 @@ export default function Home() {
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.4 }}
         >
-          Welcome to ChallengeMe
+          Welcome to GameBattle
         </motion.h1>
         <motion.p
           className="text-lg sm:text-xl text-gray-300 mb-8"
