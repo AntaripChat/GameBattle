@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { FaBars, FaTimes, FaComments, FaSignOutAlt } from "react-icons/fa";
 import { auth } from "../services/firebase";
 import { signOut } from "firebase/auth";
@@ -19,24 +19,18 @@ export default function Navbar() {
       return;
     }
 
-    const q1 = query(
-      collection(db, "challenges"),
-      where("userId", "==", user.uid)
-    );
+    const q1 = query(collection(db, "challenges"), where("userId", "==", user.uid));
     const q2 = query(collection(db, "challenges"));
 
     const unsub1 = onSnapshot(q1, (snapshot) => {
       setHasMessages(!snapshot.empty);
-    }, (error) => {
-      console.error("Error checking created challenges:", error);
     });
+
     const unsub2 = onSnapshot(q2, (snapshot) => {
-      const hasAccepted = snapshot.docs.some((doc) =>
+      const accepted = snapshot.docs.some((doc) =>
         doc.data().acceptedBy?.some((entry) => entry.userId === user.uid)
       );
-      setHasMessages((prev) => prev || hasAccepted);
-    }, (error) => {
-      console.error("Error checking accepted challenges:", error);
+      setHasMessages((prev) => prev || accepted);
     });
 
     return () => {
@@ -49,70 +43,50 @@ export default function Navbar() {
     try {
       await signOut(auth);
     } catch (error) {
-      console.error("Error signing out:", error);
+      console.error("Logout error:", error);
     }
   };
 
-  // Don't show anything while loading
-  if (loading) {
-    return null;
-  }
+  if (loading) return null;
 
   return (
     <motion.nav
-      className="flex justify-between items-center px-4 sm:px-6 lg:px-8 py-4 bg-gray-900 border-b border-gray-700 fixed w-full z-50 h-16 top-0"
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.4 }}
+      className="fixed top-0 left-0 right-0 z-50 bg-black/60 backdrop-blur-md border-b border-gray-800 shadow-md h-16 flex items-center justify-between px-5 sm:px-8 lg:px-12"
     >
-      <Link
-        to="/"
-        className="text-2xl font-bold text-indigo-400 hover:text-indigo-300 transition-colors"
-      >
+      {/* Logo */}
+      <Link to="/" className="text-2xl font-bold text-indigo-500 tracking-wide hover:text-indigo-400 transition">
         GameBattle
       </Link>
 
+      {/* Desktop Links */}
       <div className="hidden md:flex items-center gap-6">
         {user ? (
           <>
-            <Link
-              to="/dashboard"
-              className="text-gray-200 hover:text-indigo-400 transition-colors"
-            >
-              Dashboard
-            </Link>
+            <NavLink to="/dashboard">Dashboard</NavLink>
+            <NavLink to="/feed">Feed</NavLink>
+          
             {hasMessages && (
-              <Link
-                to="/messages"
-                className="text-gray-200 hover:text-indigo-400 transition-colors"
-              >
-                Messages
-              </Link>
+              <NavLink to="/messages">
+                <FaComments className="inline mr-1 mb-1" /> Messages
+              </NavLink>
             )}
-            <Link
-              to="/profile"
-              className="text-gray-200 hover:text-indigo-400 transition-colors"
-            >
-              Profile
-            </Link>
+            <NavLink to="/profile">Profile</NavLink>
             <button
               onClick={handleLogout}
-              className="text-gray-200 hover:text-red-400 transition-colors flex items-center gap-2"
+              className="flex items-center gap-2 text-gray-300 hover:text-red-400 transition"
             >
               <FaSignOutAlt /> Logout
             </button>
           </>
         ) : (
           <>
-            <Link
-              to="/login"
-              className="text-gray-200 hover:text-indigo-400 transition-colors"
-            >
-              Login
-            </Link>
+            <NavLink to="/login">Login</NavLink>
             <Link
               to="/signup"
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+              className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
             >
               Sign Up
             </Link>
@@ -120,78 +94,82 @@ export default function Navbar() {
         )}
       </div>
 
+      {/* Mobile Menu Button */}
       <button
+        className="md:hidden text-gray-300 hover:text-indigo-400 transition"
         onClick={() => setIsMenuOpen(!isMenuOpen)}
-        className="md:hidden text-gray-200 hover:text-indigo-400 p-2"
-        aria-label="Toggle navigation menu"
       >
         {isMenuOpen ? <FaTimes className="w-6 h-6" /> : <FaBars className="w-6 h-6" />}
       </button>
 
-      {isMenuOpen && (
-        <motion.div
-          className="md:hidden absolute top-16 left-0 right-0 bg-gray-800 border-t border-gray-700 shadow-lg px-4 py-6"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-        >
-          <div className="flex flex-col gap-4 items-center">
-            {user ? (
-              <>
-                <Link
-                  to="/dashboard"
-                  className="text-gray-200 hover:text-indigo-400"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Dashboard
-                </Link>
-                {hasMessages && (
+      {/* Mobile Menu */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div
+            key="mobile-menu"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute top-16 left-0 right-0 bg-gray-900 border-t border-gray-700 shadow-lg py-5 px-6 md:hidden"
+          >
+            <div className="flex flex-col gap-4 text-center">
+              {user ? (
+                <>
+                  <MobileLink to="/dashboard" setOpen={setIsMenuOpen}>Dashboard</MobileLink>
+                  <NavLink to="/feed">Feed</NavLink>
+                  {hasMessages && (
+                    <MobileLink to="/messages" setOpen={setIsMenuOpen}>
+                      <FaComments className="inline mr-1 mb-1" /> Messages
+                    </MobileLink>
+                  )}
+                  <MobileLink to="/profile" setOpen={setIsMenuOpen}>Profile</MobileLink>
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setIsMenuOpen(false);
+                    }}
+                    className="text-gray-300 hover:text-red-400 flex justify-center items-center gap-2 transition"
+                  >
+                    <FaSignOutAlt /> Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <MobileLink to="/login" setOpen={setIsMenuOpen}>Login</MobileLink>
                   <Link
-                    to="/messages"
-                    className="text-gray-200 hover:text-indigo-400"
+                    to="/signup"
+                    className="bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    Messages
+                    Sign Up
                   </Link>
-                )}
-                <Link
-                  to="/profile"
-                  className="text-gray-200 hover:text-indigo-400"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Profile
-                </Link>
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setIsMenuOpen(false);
-                  }}
-                  className="text-gray-200 hover:text-red-400 flex items-center gap-2"
-                >
-                  <FaSignOutAlt /> Logout
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  to="/login"
-                  className="text-gray-200 hover:text-indigo-400"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/signup"
-                  className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 w-full text-center"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Sign Up
-                </Link>
-              </>
-            )}
-          </div>
-        </motion.div>
-      )}
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.nav>
+  );
+}
+
+// Utility Components
+function NavLink({ to, children }) {
+  return (
+    <Link to={to} className="text-gray-300 hover:text-indigo-400 transition font-medium">
+      {children}
+    </Link>
+  );
+}
+
+function MobileLink({ to, setOpen, children }) {
+  return (
+    <Link
+      to={to}
+      className="text-gray-300 hover:text-indigo-400 transition"
+      onClick={() => setOpen(false)}
+    >
+      {children}
+    </Link>
   );
 }
